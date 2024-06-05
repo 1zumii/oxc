@@ -274,6 +274,7 @@ mod unicorn {
     pub mod prefer_blob_reading_methods;
     pub mod prefer_code_point;
     pub mod prefer_date_now;
+    pub mod prefer_default_parameters;
     pub mod prefer_dom_node_append;
     pub mod prefer_dom_node_dataset;
     pub mod prefer_dom_node_remove;
@@ -616,6 +617,7 @@ oxc_macros::declare_all_lint_rules! {
     unicorn::prefer_code_point,
     unicorn::prefer_date_now,
     unicorn::prefer_node_protocol,
+    unicorn::prefer_default_parameters,
     unicorn::prefer_dom_node_append,
     unicorn::prefer_dom_node_dataset,
     unicorn::prefer_dom_node_remove,
