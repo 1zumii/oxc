@@ -10,7 +10,7 @@ use crate::{
     frameworks,
     module_record::ModuleRecord,
     options::LintOptions,
-    utils, FrameworkFlags, RuleWithSeverity,
+    utils, AllowWarnDeny, FrameworkFlags, RuleWithSeverity,
 };
 
 use super::{plugin_name_to_prefix, LintContext};
@@ -157,6 +157,11 @@ impl<'a> ContextHost<'a> {
     #[inline]
     pub(super) fn push_diagnostic(&self, diagnostic: Message<'a>) {
         self.diagnostics.borrow_mut().push(diagnostic);
+    }
+
+    /// report unused enable/disable directives, add these as Messages to diagnostics
+    pub fn report_unused_directives(&self, rule_severity: AllowWarnDeny) {
+        // TODO: 是在 add_diagnostics 的时候判断，还是最后一起判断
     }
 
     /// Take ownership of all diagnostics collected during linting.

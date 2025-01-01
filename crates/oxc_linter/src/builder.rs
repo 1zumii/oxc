@@ -135,6 +135,12 @@ impl LinterBuilder {
         self
     }
 
+    #[inline]
+    pub fn with_report_unused_directives(mut self, report_config: Option<AllowWarnDeny>) -> Self {
+        self.options.report_unused_directive = report_config;
+        self
+    }
+
     /// Configure what linter plugins are enabled.
     ///
     /// Turning on a plugin will not automatically enable any of its rules. You must do this

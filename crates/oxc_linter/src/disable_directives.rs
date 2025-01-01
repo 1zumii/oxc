@@ -185,6 +185,8 @@ impl<'a> DisableDirectivesBuilder<'a> {
             }
         }
 
+        // TODO: lone directive pairs, report here
+
         // Lone `eslint-disable`
         if let Some(start) = self.disable_all_start {
             self.add_interval(start, source_len, DisabledRule::All);

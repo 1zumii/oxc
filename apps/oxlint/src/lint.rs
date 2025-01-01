@@ -15,8 +15,8 @@ use oxc_span::VALID_EXTENSIONS;
 
 use crate::{
     cli::{
-        CliRunResult, LintCommand, LintResult, MiscOptions, OutputFormat, OutputOptions, Runner,
-        WarningOptions,
+        CliRunResult, LintCommand, LintResult, MiscOptions, OutputFormat, OutputOptions,
+        ReportUnusedDirectives, Runner, WarningOptions,
     },
     walk::{Extensions, Walk},
 };
@@ -54,6 +54,7 @@ impl Runner for LintRunner {
             enable_plugins,
             output_options,
             misc_options,
+            inline_config_options, // TODO: 传给 linter builder，直接给到 linter。不用走到 runtime 那边
             ..
         } = self.options;
 
@@ -132,7 +133,12 @@ impl Runner for LintRunner {
             if misc_options.print_config { Some(oxlintrc.clone()) } else { None };
         let builder = LinterBuilder::from_oxlintrc(false, oxlintrc)
             .with_filters(filter)
-            .with_fix(fix_options.fix_kind());
+            .with_fix(fix_options.fix_kind())
+            .with_report_unused_directives(match inline_config_options.report_unused_directives {
+                ReportUnusedDirectives::WithoutSeverity(true) => Some(AllowWarnDeny::Warn),
+                ReportUnusedDirectives::WithSeverity(Some(severity)) => Some(severity),
+                _ => None,
+            });
 
         if let Some(basic_config_file) = oxlintrc_for_print {
             return CliRunResult::PrintConfigResult {

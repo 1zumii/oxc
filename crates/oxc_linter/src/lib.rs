@@ -200,6 +200,10 @@ impl Linter {
             }
         }
 
+        if let Some(severity) = self.options.report_unused_directive {
+            ctx_host.report_unused_directives(severity);
+        }
+
         ctx_host.take_diagnostics()
     }
 
