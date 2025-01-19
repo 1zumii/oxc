@@ -105,10 +105,28 @@ impl ConfigStoreBuilder {
             builder = builder.with_filters(categories.filters());
         }
 
+        dbg!(&plugins);
+
+        dbg!(builder
+            .rules
+            .clone()
+            .into_iter()
+            .filter(|r| r.name() == "no-nested-ternary")
+            .collect::<Vec<RuleWithSeverity>>());
+
+        dbg!(builder.rules.clone().iter().count());
+
         {
             let all_rules = builder.cache.borrow();
             oxlintrc_rules.override_rules(&mut builder.rules, all_rules.as_slice());
         }
+
+        dbg!(builder
+            .rules
+            .clone()
+            .into_iter()
+            .filter(|r| r.name() == "no-nested-ternary")
+            .collect::<Vec<RuleWithSeverity>>());
 
         builder
     }
@@ -244,7 +262,17 @@ impl ConfigStoreBuilder {
                 rule.category() == RuleCategory::Correctness
                     && plugins.contains(LintPlugins::from(rule.plugin_name()))
             })
-            .map(|rule| RuleWithSeverity { rule: rule.clone(), severity: AllowWarnDeny::Warn })
+            .map(|rule| {
+                if rule.name() == "no-nested-ternary" {
+                    dbg!(&rule);
+                    dbg!(rule.category());
+                    dbg!(rule.plugin_name());
+                    dbg!(rule.category() == RuleCategory::Correctness);
+                    dbg!(plugins.contains(LintPlugins::from(rule.plugin_name())));
+                }
+
+                RuleWithSeverity { rule: rule.clone(), severity: AllowWarnDeny::Warn }
+            })
             .collect()
     }
 

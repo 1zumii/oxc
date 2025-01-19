@@ -28,9 +28,9 @@
           "name": "oxlint",
           "kind": "bin"
         }
-      }
-      // "args": ["--ARGS-TO-OXLINT"],
-      // "cwd": "PATH-TO-TEST-PROJECT"
+      },
+      "args": ["-c=.oxlintrc.json", "src"],
+      "cwd": "/Users/xxx/about/temporary/oxlint-8485",
     }
   ]
 }

@@ -131,7 +131,13 @@ impl OxlintRules {
                             ));
                         }
                     } else if rule_configs.iter().all(|r| r.severity.is_allow()) {
-                        if let Some(rule) = rules_for_override.iter().find(|r| r.name() == *name) {
+                        if let Some(rule) = rules_for_override.iter().find(|r| {
+                            if r.name() == *name {
+                                dbg!(&r);
+                            }
+
+                            r.name() == *name
+                        }) {
                             rules_to_remove.push(rule.clone());
                         }
                     }
@@ -139,12 +145,20 @@ impl OxlintRules {
             }
         }
 
+        dbg!(&rules_to_remove);
+
         for rule in rules_to_remove {
             rules_for_override.remove(&rule);
         }
         for rule in rules_to_replace {
             rules_for_override.replace(rule);
         }
+
+        // dbg!(rules_for_override
+        //     .iter()
+        //     .cloned()
+        //     .filter(|r| r.name() == "no-nested-ternary")
+        //     .collect::<Vec<RuleWithSeverity>>());
     }
 }
 
