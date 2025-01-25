@@ -62,6 +62,8 @@ impl Rule for NoLoneBlocks {
         };
 
         if stmt.body.is_empty() {
+            dbg!(&stmt.body);
+
             if !matches!(parent_node.kind(), AstKind::TryStatement(_) | AstKind::CatchClause(_)) {
                 report(ctx, node, parent_node);
             }
@@ -198,6 +200,14 @@ fn test() {
 			}", // {                "parser": require(parser("typescript-parsers/no-lone-blocks/await-using")),                "ecmaVersion": 2022            }
         // Issue: <https://github.com/oxc-project/oxc/issues/8515>
         "try {} catch {}",
+        "
+        if (baz) {
+          console.log(baz);
+        } 
+        else {
+          // do nothing
+        }
+        ",
     ];
 
     let fail = vec![
@@ -366,4 +376,24 @@ fn test() {
     ];
 
     Tester::new(NoLoneBlocks::NAME, NoLoneBlocks::PLUGIN, pass, fail).test_and_snapshot();
+}
+
+#[test]
+fn debug() {
+    use crate::tester::Tester;
+
+    let pass = vec![
+        "
+        if (baz) {
+          console.log(baz);
+        } 
+        else {
+          // do nothing
+        }
+        ",
+    ];
+
+    let fail = vec![];
+
+    Tester::new(NoLoneBlocks::NAME, NoLoneBlocks::PLUGIN, pass, fail).test();
 }
