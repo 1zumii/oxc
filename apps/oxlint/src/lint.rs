@@ -246,13 +246,15 @@ impl Runner for LintRunner {
             }
         };
 
+        let report_unused_directives = match inline_config_options.report_unused_directives {
+            ReportUnusedDirectives::WithoutSeverity(true) => Some(AllowWarnDeny::Warn),
+            ReportUnusedDirectives::WithSeverity(Some(severity)) => Some(severity),
+            _ => None,
+        };
+
         let linter = Linter::new(LintOptions::default(), lint_config)
             .with_fix(fix_options.fix_kind())
-            .with_report_unused_directives(match inline_config_options.report_unused_directives {
-                ReportUnusedDirectives::WithoutSeverity(true) => Some(AllowWarnDeny::Warn),
-                ReportUnusedDirectives::WithSeverity(Some(severity)) => Some(severity),
-                _ => None,
-            });
+            .with_report_unused_directives(report_unused_directives);
 
         let tsconfig = basic_options.tsconfig;
         if let Some(path) = tsconfig.as_ref() {
@@ -856,6 +858,13 @@ mod test {
         Tester::new()
             .with_cwd("fixtures/two_rules_with_same_rule_name".into())
             .test_and_snapshot(args);
+    }
+
+    #[test]
+    fn test_report_unused_directives() {
+        let args = &["-c", ".oxlintrc.json", "--report-unused-disable-directives", "test.js"];
+
+        Tester::new().with_cwd("fixtures/report_unused_directives".into()).test_and_snapshot(args);
     }
 
     #[test]

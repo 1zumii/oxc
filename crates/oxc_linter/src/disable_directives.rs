@@ -702,7 +702,7 @@ mod test_unused_directives {
     use oxc_semantic::{Semantic, SemanticBuilder};
     use oxc_span::SourceType;
 
-    use super::{DisableDirectivesBuilder, DisabledRule};
+    use super::{DisableDirectives, DisableDirectivesBuilder, DisabledRule};
 
     fn process_source<'a>(allocator: &'a Allocator, source_text: &'a str) -> Semantic<'a> {
         let source_type = SourceType::default();
@@ -711,151 +711,183 @@ mod test_unused_directives {
         semantic_ret.semantic
     }
 
+    fn test_directives(
+        create_source_text: impl Fn(&str) -> String,
+        test: impl Fn(&[Comment], DisableDirectives),
+    ) {
+        let allocator = Allocator::default();
+        for prefix in ["eslint", "oxlint"] {
+            let source_text = create_source_text(prefix);
+            let semantic = process_source(&allocator, &source_text);
+            let comments = semantic.comments();
+            let directives =
+                DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
+            test(comments, directives);
+        }
+    }
+
     #[test]
     fn unused_enable_all() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            console.log();
-            /* eslint-enable */
-            console.log();
-            ",
-        );
-        let comments = semantic.comments();
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
+        test_directives(
+            |prefix| {
+                format!(
+                    r"
+                    console.log();
+                    /* {prefix}-enable */
+                    console.log();
+                    "
+                )
+            },
+            |comments, directives| {
+                let unused = directives.unused_enable_comments();
 
-        let unused = directives.unused_enable_comments();
+                assert_eq!(unused.len(), 1);
 
-        assert_eq!(
-            unused.first().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
+                let (unused_rule_name, unused_span) = unused.first().unwrap();
+                let comment_span = comments.first().unwrap().content_span();
+                assert_eq!(*unused_rule_name, None);
+                assert_eq!(*unused_span, comment_span);
+            },
         );
     }
 
     #[test]
     fn unused_enable_rules() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            console.log();
-            /* eslint-enable no-debugger, no-console */
-            console.log();
-            ",
-        );
-        let comments = semantic.comments();
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
+        test_directives(
+            |prefix| {
+                format!(
+                    r"
+                    console.log();
+                    /* {prefix}-enable no-debugger, no-console */
+                    console.log();
+                    "
+                )
+            },
+            |comments, directives| {
+                let unused = directives.unused_enable_comments();
 
-        let unused = directives.unused_enable_comments();
+                assert_eq!(unused.len(), 2);
 
-        assert_eq!(unused.len(), 2);
-        assert_eq!(
-            unused.first().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
-        );
-        assert_eq!(
-            unused.last().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
+                let (unused_rule_name_no_debugger, unused_span_no_debugger) =
+                    unused.first().unwrap();
+                let comment_span_no_debugger = comments.first().unwrap().content_span();
+                assert_eq!(*unused_rule_name_no_debugger, Some("no-debugger"));
+                assert_eq!(*unused_span_no_debugger, comment_span_no_debugger);
+
+                let (unused_rule_name_no_console, unused_span_no_console) = unused.last().unwrap();
+                let comment_span_no_console = comments.last().unwrap().content_span();
+                assert_eq!(*unused_rule_name_no_console, Some("no-console"));
+                assert_eq!(*unused_span_no_console, comment_span_no_console);
+            },
         );
     }
 
     #[test]
     fn no_unused_enable() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            /* eslint-disable no-console */
-            console.log();
-            /* eslint-enable no-console */
-            console.log();
-            ",
+        test_directives(
+            |prefix| {
+                format!(
+                    r"                    
+                    /* {prefix}-disable no-console */
+                    console.log();
+                    /* {prefix}-enable no-console */
+                    console.log();
+                    "
+                )
+            },
+            |_, directives| {
+                // no mark unused
+
+                let unused = directives.unused_enable_comments();
+
+                assert!(unused.is_empty());
+            },
         );
-        let comments = semantic.comments();
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
-
-        // no mark unused
-
-        let unused = directives.unused_enable_comments();
-
-        assert!(unused.is_empty());
     }
 
     #[test]
     fn unused_disable_all() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            /* eslint-disable */
-            console.log();
-            ",
-        );
-        let comments = semantic.comments();
+        test_directives(
+            |prefix| {
+                format!(
+                    r"                    
+                    /* {prefix}-disable */
+                    console.log();
+                    "
+                )
+            },
+            |comments, directives| {
+                // no mark unused
 
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
+                let unused = directives.collect_unused_disable_comments();
 
-        // no mark unused
+                assert_eq!(unused.len(), 1);
 
-        assert_eq!(
-            directives.collect_unused_disable_comments().first().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
+                let (unused_rule_name, unused_span) = unused.first().unwrap();
+                let comment_span = comments.first().unwrap().content_span();
+                assert_eq!(*unused_rule_name, None);
+                assert_eq!(*unused_span, comment_span);
+            },
         );
     }
 
     #[test]
     fn unused_disable_rules() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            /* eslint-disable no-debugger, no-console */
-            console.log();
-            ",
-        );
-        let comments = semantic.comments();
+        test_directives(
+            |prefix| {
+                format!(
+                    r"                    
+                    /* {prefix}-disable no-debugger, no-console */
+                    console.log();
+                    "
+                )
+            },
+            |comments, directives| {
+                // no mark unused
 
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
+                let unused = directives.collect_unused_disable_comments();
 
-        let unused = directives.collect_unused_disable_comments();
+                assert_eq!(unused.len(), 2);
 
-        assert_eq!(unused.len(), 2);
-        assert_eq!(
-            unused.first().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
-        );
-        assert_eq!(
-            unused.last().map(|(_, span)| *span),
-            comments.first().map(Comment::content_span)
+                let (unused_rule_name_no_debugger, unused_span_no_debugger) =
+                    unused.first().unwrap();
+                let comment_span_no_debugger = comments.first().unwrap().content_span();
+                assert_eq!(*unused_rule_name_no_debugger, Some("no-debugger"));
+                assert_eq!(*unused_span_no_debugger, comment_span_no_debugger);
+
+                let (unused_rule_name_no_console, unused_span_no_console) = unused.last().unwrap();
+                let comment_span_no_console = comments.last().unwrap().content_span();
+                assert_eq!(*unused_rule_name_no_console, Some("no-console"));
+                assert_eq!(*unused_span_no_console, comment_span_no_console);
+            },
         );
     }
 
     #[test]
     fn no_unused_disable() {
-        let allocator = Allocator::default();
-        let semantic = process_source(
-            &allocator,
-            r"
-            /* eslint-disable no-console */
-            console.log();
-            /* eslint-disable no-debugger */
-            debugger;
-            ",
+        test_directives(
+            |prefix| {
+                format!(
+                    r"                    
+                    /* {prefix}-disable no-console */
+                    console.log();
+                    /* {prefix}-disable no-debugger */
+                    debugger;
+                    "
+                )
+            },
+            |comments, directives| {
+                directives.mark_disable_directive_used(DisabledRule::Single {
+                    rule_name: "no-console",
+                    comment_span: comments[0].content_span(),
+                });
+                directives.mark_disable_directive_used(DisabledRule::Single {
+                    rule_name: "no-debugger",
+                    comment_span: comments[1].content_span(),
+                });
+
+                assert!(directives.collect_unused_disable_comments().is_empty());
+            },
         );
-        let comments = semantic.comments();
-
-        let directives = DisableDirectivesBuilder::new().build(semantic.source_text(), comments);
-
-        directives.mark_disable_directive_used(DisabledRule::Single {
-            rule_name: "no-console",
-            comment_span: comments[0].content_span(),
-        });
-        directives.mark_disable_directive_used(DisabledRule::Single {
-            rule_name: "no-debugger",
-            comment_span: comments[1].content_span(),
-        });
-
-        assert!(directives.collect_unused_disable_comments().is_empty());
     }
 }
